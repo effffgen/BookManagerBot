@@ -1,0 +1,5 @@
+pytelegrambotapi==3.6.2
+telebot
+cf-deployment-tracker==1.0.4
+cloudant==2.4.0
+requests
