@@ -5,6 +5,7 @@ import config
 import state
 import telebot
 import cf_deployment_tracker
+import telebot.types
 from config import book_db
 from config import user_state_db
 from cloudant.view import View
@@ -12,14 +13,13 @@ from cloudant.design_document import DesignDocument
 cf_deployment_tracker.track()
 
 bot = telebot.TeleBot(config.token)
-desdoc = DesignDocument(database=book_db,document_id='getByOwner')
+desdoc = DesignDocument(database=book_db, document_id='getByOwner')
 
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     user_state = user_state_db.get(str(message.from_user.id))
     if user_state is None:
-        print("we' re here")
         user_data = {
             '_id': str(message.from_user.id),
             'firstname': message.from_user.first_name,
@@ -45,16 +45,22 @@ def handle_adding(message):
 @bot.message_handler(commands=['show'])
 def show_book(message):
     text = message.text.split(' ')
-    if len(text)>1:
+    if len(text) > 1:
         pass
     else:
-        view = View(ddoc=desdoc,view_name='get-book-by-owner')
-        with view.custom_result(key=message.from_user.id) as result:
+        view = View(ddoc=desdoc, view_name='get-book-by-owner')
+        from_user = str(message.from_user.id)
+        with view.custom_result(key=from_user) as result:
             for row in result:
                 book_data = get_book_info_message(row['id'])
-                #Do I really have to query a database that much?
-                bot.send_message(chat_id=message.chat.id, text=book_data)
-                #Huyak inline keys
+                # Do I really have to query a database that much?
+                keyboard = telebot.types.InlineKeyboardMarkup()
+                download_button = telebot.types.InlineKeyboardButton(text='Download book', callback_data='download ' + row['id'] + ' ' + from_user)
+                change_button = telebot.types.InlineKeyboardButton(text='Change book info', callback_data='edit ' + row['id'] + ' ' + from_user)
+                delete_button = telebot.types.InlineKeyboardButton(text='Delete book', callback_data='delete ' + row['id'] + ' ' + from_user)
+                #Inline keys has been huyak'd
+                keyboard.add(download_button, change_button, delete_button)
+                bot.send_message(chat_id=message.chat.id, text=book_data, reply_markup=keyboard)
 
 
 @bot.message_handler(content_types=['text'])
@@ -62,6 +68,7 @@ def answer_text(message):
     book_id = user_state_db.get(str(message.from_user.id))['']
     book = book_db.get(book_id)
     user_state = user_state_db.get(str(message.from_user.id))
+    """
     if user_state['state'] == state.STATE_TITLE:
         if message.text == 'skip':
             message.text = state.STATE_COMPLETE
@@ -69,29 +76,28 @@ def answer_text(message):
             #What to do next?
         elif message.text == 'no':
             pass
-    #bot.send_message(chat_id=message.chat.id, text='Sorry, but at the moment I can not answer to your text.')
-    #bot.send_message(chat_id=message.chat.id, text='Please, try again later')
-
-
-"""
-Handles file recieving
-We assume that the file is always a book, maybe we need to perform a check
-TODO: consider the fact that we can get another type of file, e. g. an exe file
-TODO: read about the Telegram file_id property to store only unique books
-TODO: book can have multiple owners, handle this
-Maybe I forgot something else
-TODO: write down the book adding sequence
-"""
+    """
+    # bot.send_message(chat_id=message.chat.id, text='Sorry, but at the moment I can not answer to your text.')
+    # bot.send_message(chat_id=message.chat.id, text='Please, try again later')
 
 
 @bot.message_handler(content_types=['document'])
 def handle_file(message):
+    """
+    Handles file recieving
+    We assume that the file is always a book, maybe we need to perform a check
+    TODO: consider the fact that we can get another type of file, e. g. an exe file
+    TODO: read about the Telegram file_id property to store only unique books
+    TODO: book can have multiple owners, handle this
+    Maybe I forgot something else
+    TODO: write down the book adding sequence
+    """
     book_info = book_db.get(message.document.file_id)
     if book_info is None:
         #Add this book
         book_data = {
             '_id': message.document.file_id,
-            'owners': [message.from_user.id],
+            'owners': [str(message.from_user.id)],
             'title': None,
             'tags': [],
             'cover': None,
@@ -111,8 +117,9 @@ def handle_file(message):
                           " (or just write 'no', we'll take the file name as title.)")
     bot.send_message(chat_id=message.chat.id,
                      text="If you want to skip all next steps, write 'skip'.")
-    user_state=user_state_db.get(str(message.from_user.id))['state'] = state.STATE_TITLE
-    user_state.save()
+    user=user_state_db.get(str(message.from_user.id))
+    user['state'] = state.STATE_TITLE
+    user.save()
 
 
 def get_book_info_message(id):
@@ -125,8 +132,32 @@ def get_book_info_message(id):
     return message
 
 
+@bot.callback_query_handler(func=lambda call: True)
+def get_callback(call):
+    """
+    Handler for all callback buttons
+    Every callback button has its own command and id, so that we know what to change
+    TODO: confirmation for deletion?
+    TODO: change one particular parameter?
+    """
+
+    if call.message:
+        command, id, user_from = call.data.split(' ')
+        print(call.data)
+        if command == 'download':
+            bot.send_document(chat_id=call.message.chat.id, data=id)
+        if command == 'delete':
+            delete_book(user_from, id)
+            bot.send_message(chat_id=call.message.chat.id, text='Done!')
+
+
+def delete_book(from_user, id):
+    book = book_db[id]
+    if book is None:
+        raise Exception('There is no such book')
+    book['owners'].remove(from_user)
+    book.save()
+
+
 if __name__ == '__main__':
     bot.polling(none_stop=True)
-
-
-
