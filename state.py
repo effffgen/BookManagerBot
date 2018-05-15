@@ -25,11 +25,12 @@ class OrderedEnum(IntEnum):
 
 class State(IntEnum):
     STATE_START = auto()
-    STATE_ADDING = auto()
+    STATE_USERLANG = auto()
     STATE_TITLE = auto()
     STATE_DESCRIPTION = auto()
     STATE_AUTHORS = auto()
     STATE_COVER = auto()
+    STATE_LANG = auto()
     STATE_TAGS = auto()
     STATE_COMPLETE = auto()
 

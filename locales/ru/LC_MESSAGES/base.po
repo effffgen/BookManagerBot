@@ -1,0 +1,133 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR ORGANIZATION
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"POT-Creation-Date: 2018-05-16 00:32+0300\n"
+"PO-Revision-Date: 2018-05-16 00:33+0300\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: pygettext.py 1.5\n"
+"X-Generator: Poedit 2.0.6\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
+"%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: run.py:89
+msgid "Your book list is empty. Add something!"
+msgstr "У вас нет книг в списке. Добавьте что-нибудь!"
+
+#: run.py:139
+msgid ""
+"Ok, I already know something about this book, but you can change information "
+"if you want."
+msgstr ""
+"У меня уже есть данные об этой книге, однако если там что-то неверно, вы "
+"можете это исправить."
+
+#: run.py:144
+msgid "Welp, you have already added that book, don't try to fool me!"
+msgstr "Эй, вы уже добавляли эту книгу, зачем надо мной издеваться?"
+
+#: run.py:242
+msgid "Done!"
+msgstr "Готово!"
+
+#: run.py:258
+msgid "Change title"
+msgstr "Сменить название"
+
+#: run.py:260
+msgid "Set cover"
+msgstr "Поставить обложку"
+
+#: run.py:262
+msgid "Set book's language"
+msgstr "Указать язык книги"
+
+#: run.py:264
+msgid "Set the tag list"
+msgstr "Указать список тегов"
+
+#: run.py:266
+msgid "Set description"
+msgstr "Указать описание"
+
+#: run.py:268
+msgid "Set list of authors"
+msgstr "Указать авторов"
+
+#: run.py:302
+msgid ""
+"Ok, now you can set title of the book. If you press 'skip', title would be "
+"set to the file name.\n"
+" You can also skip all next steps by pressing the corresponding button."
+msgstr ""
+"Ок, теперь можно указать название книги. Если вы нажмёте \"пропустить\", в "
+"качестве названия будет использоваться имя файла. \n"
+"Также вы можете пропустить все дальнейшие шаги при помощи соответствующей "
+"кнопки."
+
+#: run.py:308
+msgid "How can I help you, "
+msgstr "Как я могу вам помочь, "
+
+#: run.py:315
+msgid "Please enter the book's description"
+msgstr "Пожалуйста, введите описание книги"
+
+#: run.py:319
+msgid "Please enter the authors names, separated by commas."
+msgstr "Пожалуйста, введите имена авторов. Разделитель - запятая."
+
+#: run.py:324
+msgid "Please enter the tags you want, separated by commas."
+msgstr "Пожалуйста, введите желаемые теги, разделённые запятыми."
+
+#: run.py:329
+msgid ""
+"If you have the book cover, please upload it, so that you can easily "
+"recognize the book"
+msgstr ""
+"Если у вас есть обложка книги, загрузите её, чтобы её легче было потом узнать"
+
+#: run.py:338
+msgid "Please choose the book language"
+msgstr "Пожалуйста, укажите язык книги"
+
+#: run.py:352
+msgid "Okay, everything is done!"
+msgstr "Отлично, всё готово!"
+
+#: run.py:361
+msgid "Skip"
+msgstr "Пропустить"
+
+#: run.py:365
+msgid "Skip all steps"
+msgstr "Пропустить всё"
+
+#: run.py:377
+msgid "Download"
+msgstr "Скачать"
+
+#: run.py:379
+msgid "Change info"
+msgstr "Редактировать"
+
+#: run.py:381
+msgid "Delete"
+msgstr "Удалить"
+
+#: run.py:398
+msgid "What do you want to change?"
+msgstr "Что вы хотите изменить?"
+
+#~ msgid "I am ready to get your book, just upload or forward it here!"
+#~ msgstr ""
+#~ "Я готов принять книгу, просто загрузите или перешлите её в этот чат!"
