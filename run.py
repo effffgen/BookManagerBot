@@ -102,7 +102,7 @@ def handle_photo(message):
         book = book_db.get(user_state['editing_book'])
         book['cover'] = message.photo[0].file_id
         book.save()
-        user_state['state'] = user_state['state'] + 1
+        user_state['state'] = change_status(user_state['state'], user_state['single_state'])
         user_state.save()
         process_state(message.chat.id, message.from_user.id)
 
@@ -161,32 +161,32 @@ def answer_text(message):
     user_state = user_state_db.get(str(message.from_user.id))
     book_id = user_state['editing_book']
     book = book_db.get(book_id)
+
     if user_state['state'] not in (State.STATE_START, State.STATE_COMPLETE) \
             and not handle_skip(user_state, message):
         # TODO: if it's one change
         if user_state['state'] == State.STATE_TITLE:
             book['title'] = message.text
-            user_state['state'] = change_status(user_state['state'], user_state['single_state'])
         elif user_state['state'] == State.STATE_DESCRIPTION:
             book['description'] = message.text
-            user_state['state'] = change_status(user_state['state'], user_state['single_state'])
         elif user_state['state'] == State.STATE_AUTHORS:
             book['authors'] = message.text.split(',')
-            user_state['state'] = change_status(user_state['state'], user_state['single_state'])
         elif user_state['state'] == State.STATE_TAGS:
             book['tags'] = message.text.split(',')
-            user_state['state'] = change_status(user_state['state'], user_state['single_state'])
         elif user_state['state'] == State.STATE_LANG:
-            book['tags'] = message.text.lower()
-            user_state['state'] = change_status(user_state['state'], user_state['single_state'])
-        elif user_state['state'] == State.STATE_USERLANG:
-            lang = message.text.lower()
-            if lang in ('ru', 'en'):
-                user_state['lang'] = message.text.lower()
-            user_state['state'] = State.STATE_START
+            book['lang'] = message.text.lower()
+        user_state['state'] = change_status(user_state['state'], user_state['single_state'])
         user_state.save()
         if book is not None:
             book.save()
+    elif user_state['state'] == State.STATE_USERLANG:
+        lang = message.text.lower()
+        if lang in ('ru', 'en'):
+            user_state['lang'] = message.text.lower()
+        else:
+            user_state['lang'] = 'en'
+        user_state['state'] = State.STATE_START
+        user_state.save()
     process_state(message.chat.id, message.from_user.id)
 
 
@@ -231,7 +231,6 @@ def get_callback(call):
     TODO: confirmation for deletion?
     TODO: change one particular parameter?
     """
-
     if call.message:
         command, book_id, user_from = call.data.split(' ')
         user_data = user_state_db.get(user_from)
@@ -246,11 +245,25 @@ def get_callback(call):
         # Changing one certain parameter of the book
         # Proceed with caution!
         # Have to change
-        elif command == 'title':
-            user_data['state'] = State.STATE_TITLE
+        # TODO: reduce the code, need to check somehow if we got the book editing callback
+        elif command in ('title', 'cover', 'lang', 'desc', 'tags'):
             user_data['single_state'] = True
+            user_data['editing_book'] = book_id
             user_data.save()
-            process_state(call.message.chat.id, user_from)
+
+            if command == 'title':
+                user_data['state'] = State.STATE_TITLE
+            elif command == 'cover':
+                user_data['state'] = State.STATE_COVER
+            elif command == 'lang':
+                user_data['state'] = State.STATE_LANG
+            elif command == 'desc':
+                user_data['state'] = State.STATE_DESCRIPTION
+            elif command == 'tags':
+                user_data['state'] = State.STATE_TAGS
+            elif command == 'authors':
+                user_data['state'] = State.STATE_AUTHORS
+            process_state(call.message.chat.id, call.from_user.id)
 
 
 def get_options_keyboard(book_id, from_user):
@@ -345,7 +358,6 @@ def process_state(chat_id, user_id):
         keyboard.add(en, ru)
         bot.send_message(chat_id=chat_id, text='Hello! Please, choose your language!')
         bot.send_message(chat_id=chat_id, text='Здравствуйте! Выберите язык!', reply_markup=keyboard)
-
     elif user_data['state'] == State.STATE_COMPLETE:
         keyboard = ReplyKeyboardRemove()
         user_data['editing_book'] = None
@@ -381,7 +393,6 @@ def get_book_info_keyboard(book_id, from_user):
         text=_('Change info', user_state['lang']), callback_data='edit ' + book_id + ' ' + from_user)
     delete_button = InlineKeyboardButton(
         text=_('Delete', user_state['lang']), callback_data='delete ' + book_id + ' ' + from_user)
-    # Inline keys has been huyak'd
     keyboard.add(download_button, change_button, delete_button)
     return keyboard
 
