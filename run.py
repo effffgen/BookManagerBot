@@ -23,7 +23,9 @@ translations = {
     'en': gettext.translation('base', 'locales', ['en'])
 }
 
-_ = lambda x, y: translations[y].gettext(x)
+
+def _(text, lang):
+    return translations[lang].gettext(text)
 
 
 @bot.message_handler(commands=['start'])
@@ -116,13 +118,14 @@ def handle_file(message):
     TODO: what if there would be several same books with different types (pdf, djvu)?
     Maybe I forgot something else
     """
-    user = user_state_db.get(str(message.from_user.id))
+    from_user = str(message.from_user.id)
+    user = user_state_db.get(from_user)
     book_info = book_db.get(message.document.file_id)
     if book_info is None:
         # Add this book
         book_data = {
             '_id': message.document.file_id,
-            'owners': [str(message.from_user.id)],
+            'owners': [from_user],
             'title': message.document.file_name,
             'tags': [],
             'cover': None,
@@ -133,12 +136,17 @@ def handle_file(message):
         }
         book_db.create_document(book_data)
         book_info = book_data
-    elif message.from_user.id not in book_info['owners']:
-        book_info['owners'].append(message.from_user.id)
+    elif from_user not in book_info['owners']:
+        book_info['owners'].append(from_user)
         # The book properties might be already set, what to do? TODO: todo todo todo todo todododoooooo
         bot.send_message(chat_id=message.chat.id, text=_("Ok, I already know something about this book, but you can"
                                                          " change information if you want.", user['lang']))
         book_info.save()
+        user['state'] = State.STATE_START
+        user['editing_book'] = None
+        user['single_state'] = False
+        user.save()
+        return
     else:
         bot.send_message(chat_id=message.chat.id,
                          text=_("Welp, you have already added that book, don't try to fool me!", user['lang']))
@@ -156,7 +164,6 @@ def answer_text(message):
     """
     Handles all text messages from user, that are not subject to the handlers above.
     That include: title, description and tags of the book, texts of the keyboard buttons
-    TODO: find what else
     """
     user_state = user_state_db.get(str(message.from_user.id))
     book_id = user_state['editing_book']
@@ -164,7 +171,6 @@ def answer_text(message):
 
     if user_state['state'] not in (State.STATE_START, State.STATE_COMPLETE) \
             and not handle_skip(user_state, message):
-        # TODO: if it's one change
         if user_state['state'] == State.STATE_TITLE:
             book['title'] = message.text
         elif user_state['state'] == State.STATE_DESCRIPTION:
@@ -187,6 +193,8 @@ def answer_text(message):
             user_state['lang'] = 'en'
         user_state['state'] = State.STATE_START
         user_state.save()
+    else:
+        return
     process_state(message.chat.id, message.from_user.id)
 
 
@@ -195,7 +203,7 @@ def get_book_info_message(book_id):
     Gets all data about the book with given id from the database and returns it in the human-readable form
     :param book_id: Id of the book
     :return: text of the detailed description
-    TODO: markdown!
+    TODO: additional info
     """
     book_info = book_db.get(book_id)
     if book_info is None:
@@ -229,7 +237,6 @@ def get_callback(call):
     Handler for all callback buttons
     Every callback button has its own command and id, so that we know what to change
     TODO: confirmation for deletion?
-    TODO: change one particular parameter?
     """
     if call.message:
         command, book_id, user_from = call.data.split(' ')
@@ -244,8 +251,6 @@ def get_callback(call):
             start_change(book_id=book_id, chat_id=call.message.chat.id, from_user=user_from)
         # Changing one certain parameter of the book
         # Proceed with caution!
-        # Have to change
-        # TODO: reduce the code, need to check somehow if we got the book editing callback
         elif command in ('title', 'cover', 'lang', 'desc', 'tags'):
             user_data['single_state'] = True
             user_data['editing_book'] = book_id
@@ -308,44 +313,48 @@ def process_state(chat_id, user_id):
     :param chat_id: id of chat where we need to send message
     :param user_id: id of user
     """
-
     user_data = user_state_db.get(str(user_id))
+    skip_needed = not user_data['single_state']
     if user_data['state'] == State.STATE_TITLE:
-        keyboard = get_skip_keyboard()
+        keyboard = get_skip_keyboard(user_data['lang'], skip_needed)
         bot.send_message(chat_id=chat_id,
-                         text=_("Ok, now you can set title of the book."
-                                " If you press 'skip', title would be set to the file name.\n "
-                                "You can also skip all next steps by pressing the corresponding button.",
+                         text=_("Ok, now you can set title of the book.",
                                 user_data['lang']),
                          reply_markup=keyboard)
+        if not user_data['single_state']:
+            bot.send_message(chat_id=chat_id,
+                             text=_("If you press 'skip', title would be set to the file name.\n "
+                                  "You can also skip all next steps by pressing the corresponding button.", user_data['lang']))
     elif user_data['state'] == State.STATE_START:
         empty = ReplyKeyboardRemove()
-        bot.send_message(chat_id=chat_id, text=_('How can I help you, ', user_data['lang'])
-                                               + user_data['firstname'] + '?',
-                         reply_markup=empty)
+        bot.send_message(chat_id=chat_id, text=_('How can I help you, ',
+                                                 user_data['lang']) + user_data['firstname'] + '?', reply_markup=empty)
         # TODO: main menu!
     elif user_data['state'] == State.STATE_DESCRIPTION:
-        keyboard = get_skip_keyboard()
+        keyboard = get_skip_keyboard(user_data['lang'], skip_needed)
         bot.send_message(chat_id=chat_id,
                          text=_("Please enter the book's description", user_data['lang']),  reply_markup=keyboard)
     elif user_data['state'] == State.STATE_AUTHORS:
-        keyboard = get_skip_keyboard()
+        keyboard = get_skip_keyboard(user_data['lang'], skip_needed)
         bot.send_message(chat_id=chat_id,
                          text=_("Please enter the authors names, separated by commas.",
                                 user_data['lang']), reply_markup=keyboard)
     elif user_data['state'] == State.STATE_TAGS:
-        keyboard = get_skip_keyboard()
+        keyboard = get_skip_keyboard(user_data['lang'], skip_needed)
         bot.send_message(chat_id=chat_id,
                          text=_("Please enter the tags you want, separated by commas.",
                                 user_data['lang']), reply_markup=keyboard)
     elif user_data['state'] == State.STATE_COVER:
-        keyboard = get_skip_keyboard()
+        keyboard = get_skip_keyboard(user_data['lang'], skip_needed)
         bot.send_message(chat_id=chat_id,
                          text=_("If you have the book cover, please upload it,"
                                 " so that you can easily recognize the book",
                                 user_data['lang']), reply_markup=keyboard)
     elif user_data['state'] == State.STATE_LANG:
-        keyboard = get_skip_keyboard()
+        if skip_needed:
+            keyboard = get_skip_keyboard(user_data['lang'])
+        else:
+            keyboard = ReplyKeyboardMarkup()
         en = KeyboardButton('En')
         ru = KeyboardButton('Ru')
         keyboard.add(en, ru)
@@ -397,12 +406,15 @@ def get_book_info_keyboard(book_id, from_user):
     return keyboard
 
 
-def get_skip_keyboard():
-    skip_button = KeyboardButton('Skip')
-    skip_all_button = KeyboardButton('Skip all steps')
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.add(skip_button, skip_all_button)
-    return keyboard
+def get_skip_keyboard(user_language, skip_needed=True):
+    if skip_needed:
+        skip_button = KeyboardButton(_('Skip', user_language))
+        skip_all_button = KeyboardButton(_('Skip all steps', user_language))
+        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+        keyboard.add(skip_button, skip_all_button)
+        return keyboard
+    else:
+        return None
 
 
 def start_change(book_id, chat_id, from_user):

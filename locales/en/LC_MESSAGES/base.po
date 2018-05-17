@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: \n"
-"POT-Creation-Date: 2018-05-16 00:32+0300\n"
-"PO-Revision-Date: 2018-05-16 00:32+0300\n"
+"POT-Creation-Date: 2018-05-18 01:15+0300\n"
+"PO-Revision-Date: 2018-05-18 01:17+0300\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: en\n"
@@ -17,11 +17,11 @@ msgstr ""
 "X-Generator: Poedit 2.0.6\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: run.py:89
+#: run.py:91
 msgid "Your book list is empty. Add something!"
 msgstr "Your book list is empty. Add something!"
 
-#: run.py:139
+#: run.py:142
 msgid ""
 "Ok, I already know something about this book, but you can change information "
 "if you want."
@@ -29,65 +29,67 @@ msgstr ""
 "Ok, I already know something about this book, but you can change information "
 "if you want."
 
-#: run.py:144
+#: run.py:152
 msgid "Welp, you have already added that book, don't try to fool me!"
 msgstr "Welp, you have already added that book, don't try to fool me!"
 
-#: run.py:242
+#: run.py:247
 msgid "Done!"
 msgstr "Done!"
 
-#: run.py:258
+#: run.py:275
 msgid "Change title"
 msgstr "Change title"
 
-#: run.py:260
+#: run.py:277
 msgid "Set cover"
 msgstr "Set cover"
 
-#: run.py:262
+#: run.py:279
 msgid "Set book's language"
 msgstr "Set book's language"
 
-#: run.py:264
+#: run.py:281
 msgid "Set the tag list"
 msgstr "Set the tag list"
 
-#: run.py:266
+#: run.py:283
 msgid "Set description"
 msgstr "Set description"
 
-#: run.py:268
+#: run.py:285
 msgid "Set list of authors"
 msgstr "Set list of authors"
 
-#: run.py:302
+#: run.py:319
+msgid "Ok, now you can set title of the book."
+msgstr "Ok, now you can set title of the book."
+
+#: run.py:324
 msgid ""
-"Ok, now you can set title of the book. If you press 'skip', title would be "
-"set to the file name.\n"
+"If you press 'skip', title would be set to the file name.\n"
 " You can also skip all next steps by pressing the corresponding button."
 msgstr ""
-"Ok, now you can set title of the book. If you press 'skip', title would be "
-"set to the file name.\n"
+"If you press 'skip', title would be set to the file name.\n"
 " You can also skip all next steps by pressing the corresponding button."
 
-#: run.py:308
+#: run.py:328
 msgid "How can I help you, "
 msgstr "How can I help you, "
 
-#: run.py:315
+#: run.py:334
 msgid "Please enter the book's description"
 msgstr "Please enter the book's description"
 
-#: run.py:319
+#: run.py:338
 msgid "Please enter the authors names, separated by commas."
 msgstr "Please enter the authors names, separated by commas."
 
-#: run.py:324
+#: run.py:343
 msgid "Please enter the tags you want, separated by commas."
 msgstr "Please enter the tags you want, separated by commas."
 
-#: run.py:329
+#: run.py:348
 msgid ""
 "If you have the book cover, please upload it, so that you can easily "
 "recognize the book"
@@ -95,35 +97,35 @@ msgstr ""
 "If you have the book cover, please upload it, so that you can easily "
 "recognize the book"
 
-#: run.py:338
+#: run.py:360
 msgid "Please choose the book language"
 msgstr "Please choose the book language"
 
-#: run.py:352
+#: run.py:373
 msgid "Okay, everything is done!"
 msgstr "Okay, everything is done!"
 
-#: run.py:361
+#: run.py:382 run.py:409
 msgid "Skip"
 msgstr "Skip"
 
-#: run.py:365
+#: run.py:386 run.py:410
 msgid "Skip all steps"
 msgstr "Skip all steps"
 
-#: run.py:377
+#: run.py:398
 msgid "Download"
 msgstr "Download"
 
-#: run.py:379
+#: run.py:400
 msgid "Change info"
 msgstr "Change info"
 
-#: run.py:381
+#: run.py:402
 msgid "Delete"
 msgstr "Delete"
 
-#: run.py:398
+#: run.py:421
 msgid "What do you want to change?"
 msgstr "What do you want to change?"
 
