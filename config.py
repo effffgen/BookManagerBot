@@ -1,14 +1,14 @@
 from cloudant import Cloudant
 import os
 import json
-from requests.adapters import HTTPAdapter
 
 user_state_db_name = 'users'
 book_db_name = 'books'
 client = None
 user_state_db = None
 book_db = None
-#httpAdapter = HTTPAdapter(pool_connections=15, pool_maxsize=100)
+# Initialization for usage on IBM servers
+# Cloudant DB connects automatically, Telegram bot token must be added on the management panel manually
 if 'VCAP_SERVICES' in os.environ:
     vcap = json.loads(os.getenv('VCAP_SERVICES'))
     print('Found VCAP_SERVICES')
@@ -20,6 +20,8 @@ if 'VCAP_SERVICES' in os.environ:
         client = Cloudant(user, password, url=url, connect=True)
         book_db = client.get(book_db_name, remote=True)
         user_state_db = client.get(user_state_db_name, remote=True)
+# Initialization for the local usage
+# Cloudant credentials are stored in the file 'vcap-local.json', token - in the 'token.json' file
 elif os.path.isfile('vcap-local.json'):
     with open('vcap-local.json') as f:
         vcap = json.load(f)
@@ -29,8 +31,8 @@ elif os.path.isfile('vcap-local.json'):
         password = creds['password']
         url = 'https://' + creds['host']
         client = Cloudant(user, password, url=url, connect=True)
-        book_db = client.get(book_db_name,remote=True)
-        user_state_db = client.get(user_state_db_name,remote=True)
+        book_db = client.get(book_db_name, remote=True)
+        user_state_db = client.get(user_state_db_name, remote=True)
 if 'token' in os.environ:
     token = os.getenv('token')
 elif os.path.isfile('config.json'):
@@ -39,7 +41,7 @@ elif os.path.isfile('config.json'):
         print('Found local token')
         print(token)
 
-#Perform primary initialization (synchronize local version of db with remote one)
+# Perform primary initialization (synchronize local version of db with remote one)
 # TODO:Fix this shit later
 for user in user_state_db:
     pass
