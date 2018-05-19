@@ -58,7 +58,7 @@ def handle_start(message):
     else:
         user_state['state'] = State.STATE_START
     user_state.save()
-    process_state(message.chat.id, message.from_user.id)
+    send_state_prompt(message.chat.id, message.from_user.id)
 
 
 @bot.message_handler(content_types=['photo'])
@@ -76,7 +76,7 @@ def handle_photo(message):
         book.save()
         user_state['state'] = change_status(user_state['state'], user_state['single_state'])
         user_state.save()
-        process_state(message.chat.id, message.from_user.id)
+        send_state_prompt(message.chat.id, message.from_user.id)
 
 
 @bot.message_handler(content_types=['document'])
@@ -101,7 +101,7 @@ def handle_file(message):
             'cover': None,
             'description': None,
             'authors': [],
-            'lang': None,
+            'lang': 'ru',
             'genre': None
         }
         book_db.create_document(book_data)
@@ -125,7 +125,7 @@ def handle_file(message):
     user['editing_book'] = book_info['_id']
     user['single_state'] = False
     user.save()
-    process_state(message.chat.id, user['_id'])
+    send_state_prompt(message.chat.id, user['_id'])
 
 
 @bot.message_handler(content_types=['text'])
@@ -133,26 +133,29 @@ def answer_text(message):
     """
     Handles all text messages from user, that are not subject to the handlers above.
     That include: title, description and tags of the book, texts of the keyboard buttons
+    TODO: decopmose this method
     """
     user_state = user_state_db.get(str(message.from_user.id))
     book_id = user_state['editing_book']
     book = book_db.get(book_id)
 
-    if user_state['state'] not in (State.STATE_START, State.STATE_COMPLETE, State.STATE_FIND) \
-            and not handle_skip(user_state, message):
+    if user_state['state'] not in (State.STATE_START, State.STATE_COMPLETE, State.STATE_FIND, State.STATE_USERLANG) \
+            and not (is_skip(user_state, message) or is_skipall(user_state, message)):
         if user_state['state'] == State.STATE_TITLE:
             book['title'] = message.text
         elif user_state['state'] == State.STATE_DESCRIPTION:
             book['description'] = message.text
         elif user_state['state'] == State.STATE_AUTHORS:
-            book['authors'] = message.text.split(',')
+            book['authors'] = message.text.split(', ')
         elif user_state['state'] == State.STATE_TAGS:
-            book['tags'] = message.text.split(',')
+            book['tags'] = message.text.split(', ')
         elif user_state['state'] == State.STATE_LANG:
             book['lang'] = message.text.lower()
+
         user_state['state'] = change_status(user_state['state'], user_state['single_state'])
         user_state.save()
         if book is not None:
+            print(book)
             book.save()
     elif user_state['state'] == State.STATE_USERLANG:
         lang = message.text.lower()
@@ -168,7 +171,7 @@ def answer_text(message):
         elif message.text == _('Find book', user_state['lang']):
             user_state['state'] = State.STATE_FIND
             user_state.save()
-            process_state(message.chat.id, message.from_user.id)
+            send_state_prompt(message.chat.id, message.from_user.id)
         elif message.text == _("I'm feeling lucky!", user_state['lang']):
             get_random_book(user_state, message.chat.id)
         elif message.text == _('Show all books', user_state['lang']):
@@ -178,11 +181,15 @@ def answer_text(message):
         search_for_books(user_state, chat_id=message.chat.id, criteria=message.text)
         user_state['state'] = State.STATE_START
         user_state.save()
-    elif handle_skip(user_state, message):
-        pass
+    elif is_skip(user_state, message):
+        user_state['state'] = change_status(user_state['state'], user_state['single_state'])
+        user_state.save()
+    elif is_skipall(user_state, message):
+        user_state['state'] = State.STATE_COMPLETE
+        user_state.save()
     else:
         return
-    process_state(message.chat.id, message.from_user.id)
+    send_state_prompt(message.chat.id, message.from_user.id)
 
 
 def get_book_info_message(book_info, language):
@@ -210,6 +217,8 @@ def get_book_info_message(book_info, language):
             message.append(', ')
         del message[-1]
         message.append('\n')
+    message.append(_('_Language_: ', language))
+    message.append(book_info['lang'])
     if book_info['description'] is not None:
         message.append('\n')
         message.append(book_info['description'])
@@ -237,7 +246,7 @@ def get_callback(call):
 
         # Changing one certain parameter of the book
         # Proceed with caution!
-        elif command in ('title', 'cover', 'lang', 'desc', 'tags'):
+        elif command in ('title', 'cover', 'lang', 'desc', 'tags', 'authors'):
             user_data['single_state'] = True
             user_data['editing_book'] = book_id
 
@@ -254,7 +263,7 @@ def get_callback(call):
             elif command == 'authors':
                 user_data['state'] = State.STATE_AUTHORS
             user_data.save()
-            process_state(call.message.chat.id, call.from_user.id)
+            send_state_prompt(call.message.chat.id, call.from_user.id)
 
 
 def get_options_keyboard(book_id, from_user):
@@ -294,16 +303,14 @@ def delete_book(from_user, book_id):
     book.save()
 
 
-def process_state(chat_id, user_id):
+def send_state_prompt(chat_id, user_id):
     """
-    ORDER-INSENSITIVE
     Sends appropriate prompt message to the user depending on current input state.
     :param chat_id: id of chat where we need to send message
     :param user_id: id of user
     """
     user_data = user_state_db.get(str(user_id))
     skip_needed = not user_data['single_state']
-    print(user_data['state'])
     if user_data['state'] == State.STATE_TITLE:
         keyboard = get_skip_keyboard(user_data['lang'], skip_needed)
         bot.send_message(chat_id=chat_id,
@@ -342,10 +349,7 @@ def process_state(chat_id, user_id):
                                 " so that you can easily recognize the book",
                                 user_data['lang']), reply_markup=keyboard)
     elif user_data['state'] == State.STATE_LANG:
-        if skip_needed:
-            keyboard = get_skip_keyboard(user_data['lang'])
-        else:
-            keyboard = ReplyKeyboardMarkup()
+        keyboard = ReplyKeyboardMarkup()
         en = KeyboardButton('En')
         ru = KeyboardButton('Ru')
         keyboard.add(en, ru)
@@ -360,32 +364,25 @@ def process_state(chat_id, user_id):
         bot.send_message(chat_id=chat_id, text='Здравствуйте! Выберите язык!', reply_markup=keyboard)
     elif user_data['state'] == State.STATE_COMPLETE:
         keyboard = ReplyKeyboardRemove()
+        if user_data['editing_book'] is not None:
+            bot.send_message(chat_id, _('Okay, everything is done!', user_data['lang']), reply_markup=keyboard)
         user_data['editing_book'] = None
         user_data['single_state'] = False
         user_data['state'] = State.STATE_START
         user_data.save()
-        bot.send_message(chat_id, _('Okay, everything is done!', user_data['lang']), reply_markup=keyboard)
+        send_state_prompt(chat_id, user_data['_id'])
     elif user_data['state'] == State.STATE_FIND:
         bot.send_message(chat_id=chat_id, text=_('Please enter the tag', user_data['lang']))
 
 
-def handle_skip(user_data, message):
-    """
-    Checks whether this step was skipped or not.
-    If skipped, appropriate changes in user's state are necessary.
-    :return if the step has been skipped
-    """
+def is_skip(user_data, message):
     if message.text == _('Skip', user_data['lang']):
-        user_data['state'] = user_data['state'] + 1
-        user_data.save()
-        print('skip')
-        print(user_data['state'])
         return True
+    return False
+
+
+def is_skipall(user_data, message):
     if message.text == _('Skip all steps', user_data['lang']):
-        user_data['state'] = State.STATE_START
-        user_data['editing_book'] = None
-        user_data.save()
-        print('skipall')
         return True
     return False
 
@@ -422,7 +419,7 @@ def start_change(book_id, chat_id, from_user):
 
 def change_status(state, one_time=False):
     if one_time:
-        return State.STATE_COMPLETE
+        return State.STATE_START
     else:
         return state + 1
 
@@ -443,12 +440,11 @@ def show_all_books(user_state, chat_id):
     with view.custom_result(key=user_state['_id']) as result:
         empty = True
         for row in result:
-            print(*row)
             print_book(row['value'], user_state, chat_id)
             empty = False
         if empty:
             bot.send_message(chat_id, _("Your book list is empty. Add something!", user_state['lang']))
-    process_state(chat_id, user_state['_id'])
+    send_state_prompt(chat_id, user_state['_id'])
 
 
 def get_random_book(user_state, chat_id):
@@ -476,7 +472,6 @@ def search_for_books(user_state, chat_id, criteria):
     result = query.result
     empty = True
     for row in result:
-        print(row)
         print_book(row, user_state, chat_id)
         empty = False
     if empty:
