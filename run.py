@@ -23,8 +23,10 @@ dd_lang = DesignDocument(database=book_db, document_id='getByLang')
 random.seed()
 
 
-def get_by_tag(tag):
-    return Query(database=book_db, selector={"_id": {"$gt": None}, 'tags': {'$elemMatch': {'$eq': tag}}})
+def get_by_tag(tag, user_id):
+    return Query(database=book_db, selector={"_id": {"$gt": None},
+                                             'tags': {'$elemMatch': {'$eq': tag}},
+                                             'owners': {'$elemMatch': {'$eq': user_id}}})
 
 
 translations = {
@@ -299,7 +301,8 @@ def delete_book(from_user, book_id):
     book = book_db[book_id]
     if book is None:
         raise Exception('There is no such book')
-    book['owners'].remove(from_user)
+    if from_user in book['owners']:
+        book['owners'].remove(from_user)
     book.save()
 
 
@@ -349,14 +352,14 @@ def send_state_prompt(chat_id, user_id):
                                 " so that you can easily recognize the book",
                                 user_data['lang']), reply_markup=keyboard)
     elif user_data['state'] == State.STATE_LANG:
-        keyboard = ReplyKeyboardMarkup()
+        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
         en = KeyboardButton('En')
         ru = KeyboardButton('Ru')
         keyboard.add(en, ru)
         bot.send_message(chat_id=chat_id,
                          text=_("Please choose the book language", user_data['lang']), reply_markup=keyboard)
     elif user_data['state'] == State.STATE_USERLANG:
-        keyboard = ReplyKeyboardMarkup()
+        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
         en = KeyboardButton('En')
         ru = KeyboardButton('Ru')
         keyboard.add(en, ru)
@@ -459,16 +462,15 @@ def print_book(book, user_state, chat_id):
     book_data, cover = get_book_info_message(book, user_state['lang'])
     # Do I really have to query a database that much?
     keyboard = get_book_info_keyboard(book['_id'], user_state['_id'])
-    if cover is None:
-        bot.send_message(chat_id=chat_id, text=book_data, reply_markup=keyboard,
-                         parse_mode='Markdown')
-    else:
-        bot.send_photo(chat_id=chat_id, caption=book_data, photo=cover, reply_markup=keyboard,
+    if cover is not None:
+        bot.send_photo(chat_id=chat_id, photo=cover,
                        parse_mode='Markdown')
+    bot.send_message(chat_id=chat_id, text=book_data, reply_markup=keyboard,
+                     parse_mode='Markdown')
 
 
 def search_for_books(user_state, chat_id, criteria):
-    query = get_by_tag(criteria)
+    query = get_by_tag(criteria, user_state['_id'])
     result = query.result
     empty = True
     for row in result:
